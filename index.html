@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Fiverr Order Report Maker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script type="importmap">
+    {
+      "imports": {
+        "react/": "https://aistudiocdn.com/react@19.2.0/",
+        "react": "https://aistudiocdn.com/react@19.2.0",
+        "react-dom/client": "https://aistudiocdn.com/react-dom@19.2.0/client",
+        "@google/genai": "https://aistudiocdn.com/@google/genai@1.29.0",
+        "jspdf": "https://cdn.skypack.dev/jspdf",
+        "jspdf-autotable": "https://cdn.skypack.dev/jspdf-autotable"
+      }
+    }
+    </script>
+    <style>
+      /* Simple style for number and date inputs to match the theme */
+      .themed-input {
+        background-color: #1e293b; /* slate-800 */
+        border: 1px solid #475569; /* slate-600 */
+        border-radius: 0.375rem; /* rounded-md */
+        padding: 0.5rem 0.75rem;
+        color: #cbd5e1; /* slate-300 */
+        transition: border-color 0.2s, box-shadow 0.2s;
+      }
+      .themed-input:focus {
+        outline: none;
+        border-color: #6366f1; /* indigo-500 */
+        box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.5);
+      }
+      /* Fix for date picker icon color in dark mode */
+      input[type="date"]::-webkit-calendar-picker-indicator {
+        filter: invert(0.8);
+      }
+      /* Webkit browsers styles for number input */
+      .themed-input::-webkit-inner-spin-button,
+      .themed-input::-webkit-outer-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+      }
+      .themed-input {
+        -moz-appearance: textfield;
+      }
+      .cost-input {
+        width: 100px;
+        text-align: right;
+      }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-200">
+    <div id="root"></div>
+    <script type="text/babel" data-type="module">
+        import React, { useState, useMemo } from 'react';
+        import ReactDOM from 'react-dom/client';
+        import { GoogleGenAI, Type } from "@google/genai";
+        import { jsPDF } from 'jspdf';
+        import autoTable from 'jspdf-autotable';
+
+        // --- ICONS ---
+        const SparklesIcon = ({ className }) => (
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456Z" />
+          </svg>
+        );
+
+        const ClearIcon = ({ className }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9.75 14.25 12m0 0 2.25 2.25M14.25 12 12 14.25m-2.58 4.92-6.374-6.375a1.125 1.125 0 0 1 0-1.59L9.42 4.83c.21-.211.497-.33.795-.33H19.5a2.25 2.25 0 0 1 2.25 2.25v10.5a2.25 2.25 0 0 1-2.25 2.25h-9.284c-.298 0-.585-.119-.795-.33Z" />
+            </svg>
+        );
+        
+        const DownloadIcon = ({ className }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+            </svg>
+        );
+        
+        // --- GEMINI SERVICE ---
+        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
+        const orderSchema = {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              clientName: { type: Type.STRING, description: "The client's username." },
+              description: { type: Type.STRING, description: "A concise description of the service provided." },
+              date: { type: Type.STRING, description: "The date of the order, e.g., 'Nov 10'." },
+              value: { type: Type.NUMBER, description: "The total numerical value of the order, including tips. Exclude $0 items." },
+              status: { type: Type.STRING, description: "The current status of the order, e.g., 'Completed' or 'In Revision'." },
+            },
+            required: ["clientName", "description", "date", "value", "status"],
+          },
+        };
+
+        const parseOrderData = async (text) => {
+          const prompt = `Parse the following Fiverr order report text into a structured JSON array. For each order, extract clientName, description, date, status, and calculate the total value by summing the base price and any tips. Ignore $0 items like 'Extend Delivery'. Adhere strictly to the provided JSON schema. Text to parse: \n---\n${text}\n---`;
+
+          try {
+            const response = await ai.models.generateContent({
+              model: "gemini-2.5-flash",
+              contents: prompt,
+              config: {
+                responseMimeType: "application/json",
+                responseSchema: orderSchema,
+              },
+            });
+
+            const jsonString = response.text.trim();
+            const parsedData = JSON.parse(jsonString);
+            
+            if (!Array.isArray(parsedData)) {
+              throw new Error("AI response was not a JSON array.");
+            }
+            return parsedData.map(order => ({ ...order, cost: undefined }));
+          } catch (error) {
+            console.error("Error parsing order data with Gemini:", error);
+            throw new Error("Failed to parse the order data. Check your text format and try again.");
+          }
+        };
+
+        // --- COMPONENTS ---
+        const OrderInput = ({ onGenerate, isLoading, onClear }) => {
+          const [inputText, setInputText] = useState('');
+
+          const placeholderText = `Paste your raw order data from Fiverr here. For example:
+d
+dons_downfall
+build shopify store...
+Nov 10	$200	
+In Revision
+...`;
+
+          const handleGenerateClick = () => {
+            if (inputText.trim()) onGenerate(inputText);
+          };
+
+          const handleClearClick = () => {
+            setInputText('');
+            onClear();
+          };
+
+          return (
+            <div className="flex flex-col space-y-4 p-4 md:p-6 bg-slate-800/50 rounded-2xl border border-slate-700 shadow-lg">
+              <label htmlFor="order-data" className="text-lg font-semibold text-slate-300">Fiverr Order Data</label>
+              <textarea
+                id="order-data"
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                placeholder={placeholderText}
+                className="w-full h-96 p-4 bg-slate-900 border border-slate-600 rounded-lg text-sm text-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors duration-200 resize-y"
+                disabled={isLoading}
+              />
+              <div className="flex flex-col sm:flex-row gap-4">
+                <button
+                  onClick={handleGenerateClick}
+                  disabled={isLoading || !inputText.trim()}
+                  className="flex-1 inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 focus:ring-indigo-500 disabled:bg-indigo-500/50 disabled:cursor-not-allowed transition-all duration-200"
+                >
+                  {isLoading ? 'Generating...' : <><SparklesIcon className="w-5 h-5 mr-2" /> Generate Report</>}
+                </button>
+                <button
+                  onClick={handleClearClick}
+                  disabled={isLoading}
+                  className="inline-flex items-center justify-center px-6 py-3 border border-slate-600 text-base font-medium rounded-md shadow-sm text-slate-300 bg-slate-700 hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 focus:ring-slate-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                >
+                  <ClearIcon className="w-5 h-5 mr-2" /> Clear
+                </button>
+              </div>
+            </div>
+          );
+        };
+
+        const StatusBadge = ({ status }) => {
+            const baseClasses = 'px-3 py-1 text-xs font-medium rounded-full inline-block';
+            let statusClasses = '';
+            switch (status.toLowerCase()) {
+                case 'completed': statusClasses = 'bg-green-500/20 text-green-300'; break;
+                case 'cancelled': statusClasses = 'bg-red-500/20 text-red-300'; break;
+                default: statusClasses = 'bg-slate-500/20 text-slate-300'; break;
+            }
+            return <span className={`${baseClasses} ${statusClasses}`}>{status}</span>;
+        };
+
+        const ReportTable = ({ orders, onCostChange, exchangeRate }) => {
+          if (orders.length === 0) {
+            return (
+                <div className="flex items-center justify-center h-64 p-4 md:p-6 bg-slate-800/50 rounded-2xl border-2 border-dashed border-slate-700 text-slate-500">
+                    <div className="text-center">
+                        <h3 className="mt-2 text-sm font-medium">No Report Data</h3>
+                        <p className="mt-1 text-sm">Your generated and filtered report will appear here.</p>
+                    </div>
+              </div>
+            );
+          }
+
+          const totalRevenueUSD = orders.reduce((sum, order) => (order.status.toLowerCase() === 'completed' ? sum + order.value : sum), 0);
+          const totalCostPKR = orders.reduce((sum, order) => sum + (order.cost || 0), 0);
+          const totalRevenuePKR = totalRevenueUSD * exchangeRate;
+          const totalProfitPKR = totalRevenuePKR - totalCostPKR;
+
+          const formatPKR = (value) => value.toLocaleString('en-PK', { style: 'currency', currency: 'PKR', minimumFractionDigits: 0 });
+
+          return (
+            <div className="p-4 md:p-6 bg-slate-800/50 rounded-2xl border border-slate-700 shadow-lg flex flex-col">
+                <div className="mb-6 grid grid-cols-2 sm:grid-cols-4 gap-4 text-center sm:text-left">
+                    <div>
+                        <h3 className="text-sm text-slate-400">Revenue (USD)</h3>
+                        <p className="font-bold text-lg text-green-400">${totalRevenueUSD.toFixed(2)}</p>
+                    </div>
+                    <div>
+                        <h3 className="text-sm text-slate-400">Revenue (PKR)</h3>
+                        <p className="font-bold text-lg text-green-400">{formatPKR(totalRevenuePKR)}</p>
+                    </div>
+                    <div>
+                        <h3 className="text-sm text-slate-400">Total Cost (PKR)</h3>
+                        <p className="font-bold text-lg text-red-400">{formatPKR(totalCostPKR)}</p>
+                    </div>
+                    <div>
+                        <h3 className="text-sm text-slate-400">Total Profit (PKR)</h3>
+                        <p className={`font-bold text-lg ${totalProfitPKR >= 0 ? 'text-blue-400' : 'text-red-400'}`}>
+                            {formatPKR(totalProfitPKR)}
+                        </p>
+                    </div>
+                </div>
+                <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-slate-700">
+                        <thead className="bg-slate-800">
+                            <tr>
+                                <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-slate-300 sm:pl-6">Client</th>
+                                <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-slate-300">Date</th>
+                                <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-slate-300">Value ($)</th>
+                                <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-slate-300">Cost (PKR)</th>
+                                <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-slate-300">Profit (PKR)</th>
+                                <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-slate-300">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-800 bg-slate-900/50">
+                            {orders.map((order, index) => {
+                                const profitPKR = (order.value * exchangeRate) - (order.cost || 0);
+                                return (
+                                <tr key={`${order.clientName}-${index}`} className="hover:bg-slate-800/40">
+                                    <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-slate-200 sm:pl-6">{order.clientName}</td>
+                                    <td className="whitespace-nowrap px-3 py-4 text-sm text-slate-400">{order.date}</td>
+                                    <td className="whitespace-nowrap px-3 py-4 text-sm text-slate-300 font-mono">${order.value.toFixed(2)}</td>
+                                    <td className="whitespace-nowrap px-3 py-4 text-sm">
+                                        <input
+                                            type="number"
+                                            value={order.cost === undefined ? '' : order.cost}
+                                            onChange={(e) => onCostChange(index, e.target.value === '' ? undefined : parseFloat(e.target.value))}
+                                            className="themed-input cost-input"
+                                            placeholder="0"
+                                            aria-label={`Cost in PKR for ${order.clientName}`}
+                                        />
+                                    </td>
+                                    <td className={`whitespace-nowrap px-3 py-4 text-sm font-mono ${profitPKR < 0 ? 'text-red-400' : 'text-slate-300'}`}>
+                                        {profitPKR.toLocaleString('en-PK', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                                    </td>
+                                    <td className="whitespace-nowrap px-3 py-4 text-sm text-slate-400"><StatusBadge status={order.status} /></td>
+                                </tr>
+                            )})}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+          );
+        };
+
+        // --- MAIN APP ---
+        const App = () => {
+          const [orders, setOrders] = useState([]);
+          const [isLoading, setIsLoading] = useState(false);
+          const [error, setError] = useState(null);
+          const [filterDate, setFilterDate] = useState('');
+          const [exchangeRate, setExchangeRate] = useState(278);
+
+          const handleGenerateReport = async (text) => {
+            setIsLoading(true);
+            setError(null);
+            try {
+              const parsedOrders = await parseOrderData(text);
+              const filteredOrders = parsedOrders.filter(o => {
+                const status = o.status.toLowerCase();
+                return status !== 'in revision' && status !== 'in progress';
+              });
+              setOrders(filteredOrders);
+            } catch (err) {
+              setError(err.message || 'An unknown error occurred.');
+              setOrders([]);
+            } finally {
+              setIsLoading(false);
+            }
+          };
+          
+          const handleCostChange = (index, newCost) => {
+              setOrders(currentOrders => {
+                  const updatedOrders = [...currentOrders];
+                  updatedOrders[index] = { ...updatedOrders[index], cost: isNaN(newCost) ? undefined : newCost };
+                  return updatedOrders;
+              });
+          };
+
+          const handleClear = () => {
+            setOrders([]);
+            setError(null);
+            setFilterDate('');
+          };
+          
+          const displayedOrders = useMemo(() => {
+              if (!filterDate) return orders;
+              
+              return orders.filter(order => {
+                  try {
+                      const orderDate = new Date(`${order.date}, ${new Date().getFullYear()}`);
+                      if (isNaN(orderDate.getTime())) return false;
+                      
+                      const tzoffset = (new Date()).getTimezoneOffset() * 60000;
+                      const localISOTime = (new Date(orderDate.getTime() - tzoffset)).toISOString().slice(0, 10);
+                      
+                      return localISOTime === filterDate;
+                  } catch(e) {
+                      return false;
+                  }
+              });
+          }, [orders, filterDate]);
+
+          const getMostFrequentMonth = (ordersToScan) => {
+              if (!ordersToScan || ordersToScan.length === 0) {
+                  return new Date().toLocaleString('default', { month: 'long' });
+              }
+              const monthCounts = ordersToScan.reduce((acc, order) => {
+                  const month = order.date.split(' ')[0];
+                  acc[month] = (acc[month] || 0) + 1;
+                  return acc;
+              }, {});
+
+              const mostFrequent = Object.keys(monthCounts).reduce((a, b) => monthCounts[a] > monthCounts[b] ? a : b);
+              
+              const date = new Date(`${mostFrequent} 1, 2000`);
+              return date.toLocaleString('default', { month: 'long' });
+          };
+          
+          const handleDownload = (format) => {
+              const formatPKR = (value) => value.toLocaleString('en-PK', { style: 'currency', currency: 'PKR', minimumFractionDigits: 0 });
+
+              if (format === 'csv') {
+                  if (displayedOrders.length === 0) return;
+                  const monthName = getMostFrequentMonth(displayedOrders);
+                  const fileName = `Shafi IT Solutions Order Delivery Report - ${monthName}`;
+                  const head = [['Client', 'Date', 'Value ($)', 'Cost (PKR)', 'Profit (PKR)', 'Status']];
+                  const body = displayedOrders.map(order => {
+                      const valueUSD = order.value;
+                      const costPKR = order.cost || 0;
+                      const profitPKR = (valueUSD * exchangeRate) - costPKR;
+                      return [
+                          order.clientName,
+                          order.date,
+                          valueUSD.toFixed(2),
+                          costPKR.toFixed(2),
+                          profitPKR.toFixed(2),
+                          order.status
+                      ];
+                  });
+
+                  const csvContent = "data:text/csv;charset=utf-8," 
+                      + [head.join(','), ...body.map(e => e.join(','))].join('\n');
+                  const encodedUri = encodeURI(csvContent);
+                  const link = document.createElement("a");
+                  link.setAttribute("href", encodedUri);
+                  link.setAttribute("download", `${fileName}.csv`);
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+              } else if (format === 'pdf') {
+                  if (orders.length === 0) return;
+
+                  // Calculate summary stats from the full, unfiltered list
+                  const totalRevenueUSD = orders.reduce((sum, order) => (order.status.toLowerCase() === 'completed' ? sum + order.value : sum), 0);
+                  const totalCostPKR = orders.reduce((sum, order) => sum + (order.cost || 0), 0);
+                  const totalRevenuePKR = totalRevenueUSD * exchangeRate;
+                  const totalProfitPKR = totalRevenuePKR - totalCostPKR;
+                  
+                  const monthName = getMostFrequentMonth(orders);
+                  const fileName = `Shafi IT Solutions Order Delivery Report - ${monthName}`;
+                  const doc = new jsPDF();
+                  
+                  // Add Header and Summary
+                  doc.setFontSize(18);
+                  doc.text(fileName, 14, 22);
+                  doc.setFontSize(11);
+                  doc.setTextColor(100);
+
+                  const summaryYStart = 32;
+                  doc.text(`Total Revenue (USD):`, 14, summaryYStart);
+                  doc.text(`$${totalRevenueUSD.toFixed(2)}`, 60, summaryYStart);
+                  doc.text(`Total Revenue (PKR):`, 14, summaryYStart + 6);
+                  doc.text(`${formatPKR(totalRevenuePKR)}`, 60, summaryYStart + 6);
+                  doc.text(`Total Cost (PKR):`, 14, summaryYStart + 12);
+                  doc.text(`${formatPKR(totalCostPKR)}`, 60, summaryYStart + 12);
+                  doc.setFont(undefined, 'bold');
+                  doc.text(`Total Profit (PKR):`, 14, summaryYStart + 18);
+                  doc.text(`${formatPKR(totalProfitPKR)}`, 60, summaryYStart + 18);
+                  doc.setFont(undefined, 'normal');
+
+                  // Add Table
+                  const head = [['Client', 'Date', 'Value ($)', 'Cost (PKR)', 'Profit (PKR)', 'Status']];
+                  const body = orders.map(order => {
+                      const valueUSD = order.value;
+                      const costPKR = order.cost || 0;
+                      const profitPKR = (valueUSD * exchangeRate) - costPKR;
+                      return [
+                          order.clientName,
+                          order.date,
+                          valueUSD.toFixed(2),
+                          costPKR.toFixed(2),
+                          profitPKR.toFixed(2),
+                          order.status
+                      ];
+                  });
+
+                  autoTable(doc, {
+                      startY: summaryYStart + 28,
+                      head: head,
+                      body: body,
+                      theme: 'grid',
+                      headStyles: { fillColor: [41, 51, 65] }
+                  });
+                  
+                  doc.save(`${fileName}.pdf`);
+              }
+          };
+
+          return (
+            <div className="min-h-screen p-4 sm:p-6 lg:p-8">
+              <div className="max-w-7xl mx-auto">
+                <header className="text-center mb-8 md:mb-12">
+                  <h1 className="text-4xl sm:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-500">Fiverr Order Report Maker</h1>
+                  <p className="mt-4 text-lg text-slate-400 max-w-2xl mx-auto">Instantly transform messy, copy-pasted order data into a clean, structured report.</p>
+                </header>
+                <main className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+                  <div className="lg:sticky top-8 space-y-4">
+                    <OrderInput onGenerate={handleGenerateReport} isLoading={isLoading} onClear={handleClear} />
+                    {error && 
+                      <div className="p-4 bg-red-500/20 text-red-300 border border-red-500/30 rounded-lg">
+                        <p className="font-bold">Error</p>
+                        <p>{error}</p>
+                      </div>
+                    }
+                  </div>
+                  <div className="space-y-4">
+                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 bg-slate-800/50 rounded-2xl border border-slate-700">
+                        <div className="flex flex-wrap items-center gap-x-6 gap-y-4">
+                          <div className="flex items-center gap-2">
+                            <label htmlFor="date-filter" className="text-sm font-medium text-slate-300">Filter Date:</label>
+                            <input 
+                                type="date"
+                                id="date-filter"
+                                value={filterDate}
+                                onChange={e => setFilterDate(e.target.value)}
+                                className="themed-input"
+                            />
+                            <button
+                                onClick={() => setFilterDate('')}
+                                className="px-3 py-2 text-sm border border-slate-600 rounded-md hover:bg-slate-700 disabled:opacity-50"
+                                disabled={!filterDate}
+                            >
+                              Clear
+                            </button>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <label htmlFor="exchange-rate" className="text-sm font-medium text-slate-300">USD to PKR:</label>
+                            <input 
+                                type="number"
+                                id="exchange-rate"
+                                value={exchangeRate}
+                                onChange={e => setExchangeRate(parseFloat(e.target.value) || 0)}
+                                className="themed-input w-24"
+                            />
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <button onClick={() => handleDownload('csv')} disabled={displayedOrders.length === 0} className="inline-flex items-center justify-center px-4 py-2 border border-slate-600 text-sm font-medium rounded-md shadow-sm text-slate-300 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed">
+                            <DownloadIcon className="w-4 h-4 mr-2" /> CSV
+                          </button>
+                          <button onClick={() => handleDownload('pdf')} disabled={orders.length === 0} className="inline-flex items-center justify-center px-4 py-2 border border-slate-600 text-sm font-medium rounded-md shadow-sm text-slate-300 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed">
+                            <DownloadIcon className="w-4 h-4 mr-2" /> PDF
+                          </button>
+                        </div>
+                     </div>
+                     <ReportTable orders={displayedOrders} onCostChange={handleCostChange} exchangeRate={exchangeRate} />
+                  </div>
+                </main>
+                <footer className="text-center mt-12 text-slate-500 text-sm">
+                  <p>Powered by Google Gemini</p>
+                </footer>
+              </div>
+            </div>
+          );
+        };
+
+        // --- RENDER APP ---
+        const rootElement = document.getElementById('root');
+        const root = ReactDOM.createRoot(rootElement);
+        root.render(<App />);
+
+    </script>
+</body>
+</html>
