@@ -1,4 +1,5 @@
 {
   "name": "Fiverr Order Report Maker",
-  "description": "An application that uses AI to parse unstructured, copy-pasted text from Fiverr order pages and transforms it into a structured, clean table format. Ideal for freelancers to quickly generate reports."
+  "description": "An application that uses AI to parse unstructured, copy-pasted text from Fiverr order pages and transforms it into a structured, clean table format. Ideal for freelancers to quickly generate reports.",
+  "requestFramePermissions": []
 }
