@@ -74,7 +74,7 @@
 <body class="bg-slate-900 text-slate-200">
     <div id="root"></div>
     <script type="text/babel" data-type="module">
-        import React, { useState, useMemo, useEffect } from 'react';
+        import React, { useState, useMemo, useEffect, useRef } from 'react';
         import ReactDOM from 'react-dom/client';
         import { GoogleGenAI, Type } from "@google/genai";
         // FIXED: Use named import for jspdf from esm.sh
@@ -141,6 +141,24 @@
         const CheckIcon = ({ className }) => (
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className={className}>
               <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+            </svg>
+        );
+        
+        const DocumentTextIcon = ({ className }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+            </svg>
+        );
+
+        const ClockIcon = ({ className }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+            </svg>
+        );
+
+        const PaperAirplaneIcon = ({ className }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5" />
             </svg>
         );
 
@@ -471,6 +489,142 @@
             );
         };
 
+        const WordCounterTool = () => {
+            const [text, setText] = useState("");
+            
+            const words = text.trim() === "" ? 0 : text.trim().split(/\s+/).length;
+            const chars = text.length;
+            const readingTime = Math.ceil(words / 200);
+
+            return (
+                <div className="space-y-4">
+                    <textarea 
+                        className="themed-input h-40 resize-none text-sm" 
+                        placeholder="Paste your text here to count words..."
+                        value={text}
+                        onChange={(e) => setText(e.target.value)}
+                    ></textarea>
+                    <div className="grid grid-cols-3 gap-3">
+                        <div className="bg-slate-700/30 p-3 rounded-lg text-center">
+                            <div className="text-2xl font-bold text-white">{words}</div>
+                            <div className="text-xs text-slate-400 uppercase tracking-wide">Words</div>
+                        </div>
+                         <div className="bg-slate-700/30 p-3 rounded-lg text-center">
+                            <div className="text-2xl font-bold text-white">{chars}</div>
+                            <div className="text-xs text-slate-400 uppercase tracking-wide">Chars</div>
+                        </div>
+                         <div className="bg-slate-700/30 p-3 rounded-lg text-center">
+                            <div className="text-2xl font-bold text-white">~{readingTime}</div>
+                            <div className="text-xs text-slate-400 uppercase tracking-wide">Min Read</div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const PomodoroTool = () => {
+            const [timeLeft, setTimeLeft] = useState(25 * 60);
+            const [isActive, setIsActive] = useState(false);
+            const [mode, setMode] = useState('work'); // work | break
+            
+            useEffect(() => {
+                let interval = null;
+                if (isActive && timeLeft > 0) {
+                    interval = setInterval(() => {
+                        setTimeLeft(timeLeft - 1);
+                    }, 1000);
+                } else if (timeLeft === 0) {
+                    setIsActive(false);
+                }
+                return () => clearInterval(interval);
+            }, [isActive, timeLeft]);
+
+            const toggleTimer = () => setIsActive(!isActive);
+            const resetTimer = () => {
+                setIsActive(false);
+                setTimeLeft(mode === 'work' ? 25 * 60 : 5 * 60);
+            };
+            const setWorkMode = () => {
+                setMode('work');
+                setIsActive(false);
+                setTimeLeft(25 * 60);
+            }
+             const setBreakMode = () => {
+                setMode('break');
+                setIsActive(false);
+                setTimeLeft(5 * 60);
+            }
+
+            const formatTime = (seconds) => {
+                const mins = Math.floor(seconds / 60);
+                const secs = seconds % 60;
+                return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            };
+
+            return (
+                <div className="text-center space-y-6">
+                    <div className="flex justify-center gap-4">
+                        <button onClick={setWorkMode} className={`px-4 py-1 rounded-full text-xs font-medium transition-colors ${mode === 'work' ? 'bg-indigo-600 text-white' : 'bg-slate-700 text-slate-400'}`}>Work</button>
+                        <button onClick={setBreakMode} className={`px-4 py-1 rounded-full text-xs font-medium transition-colors ${mode === 'break' ? 'bg-emerald-600 text-white' : 'bg-slate-700 text-slate-400'}`}>Break</button>
+                    </div>
+                    <div className="text-7xl font-mono font-bold text-white tracking-wider">
+                        {formatTime(timeLeft)}
+                    </div>
+                    <div className="flex justify-center gap-4">
+                        <button onClick={toggleTimer} className={`w-24 py-2 rounded-lg font-semibold transition-colors ${isActive ? 'bg-amber-600 hover:bg-amber-700 text-white' : 'bg-emerald-600 hover:bg-emerald-700 text-white'}`}>
+                            {isActive ? 'Pause' : 'Start'}
+                        </button>
+                        <button onClick={resetTimer} className="w-24 py-2 rounded-lg font-semibold bg-slate-700 hover:bg-slate-600 text-slate-200 transition-colors">
+                            Reset
+                        </button>
+                    </div>
+                </div>
+            );
+        };
+
+        const ProposalTool = () => {
+            const [clientName, setClientName] = useState("");
+            const [jobTitle, setJobTitle] = useState("");
+            const [mySkills, setMySkills] = useState("");
+            const [generated, setGenerated] = useState("");
+
+            const generateProposal = () => {
+                if(!clientName || !jobTitle) return;
+                const text = `Hi ${clientName},
+
+I noticed your posting for a "${jobTitle}" and I'd love to help you with it. 
+
+I have extensive experience in ${mySkills || "this field"} and I am confident I can deliver high-quality results for you. I prioritize clear communication and timely delivery.
+
+Let's discuss how we can get started!
+
+Best regards,`;
+                setGenerated(text);
+            };
+
+            const copyToClipboard = () => {
+                navigator.clipboard.writeText(generated);
+                alert("Copied to clipboard!");
+            };
+
+            return (
+                <div className="space-y-4">
+                    <div className="grid grid-cols-1 gap-3">
+                         <input placeholder="Client Name" value={clientName} onChange={e => setClientName(e.target.value)} className="themed-input" />
+                         <input placeholder="Job Title" value={jobTitle} onChange={e => setJobTitle(e.target.value)} className="themed-input" />
+                         <input placeholder="My Key Skills (e.g., React, Logo Design)" value={mySkills} onChange={e => setMySkills(e.target.value)} className="themed-input" />
+                         <button onClick={generateProposal} className="w-full py-2 bg-indigo-600 rounded-md text-white hover:bg-indigo-700 font-medium">Generate Proposal</button>
+                    </div>
+                    {generated && (
+                        <div className="relative mt-4">
+                             <textarea readOnly value={generated} className="w-full h-40 bg-slate-900 border border-slate-700 rounded-lg p-3 text-sm text-slate-300"></textarea>
+                             <button onClick={copyToClipboard} className="absolute top-2 right-2 px-3 py-1 bg-slate-700 hover:bg-slate-600 text-xs text-white rounded">Copy</button>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
 
         // --- COMPONENTS ---
         const OrderInput = ({ onGenerate, isLoading, onClear }) => {
@@ -730,7 +884,10 @@ In Revision
             const tools = {
                 calculator: { title: "Fee Calculator", component: <FeeCalculatorTool /> },
                 clients: { title: "Client Manager", component: <ClientManagerTool /> },
-                projects: { title: "Project Tracker", component: <ProjectTrackerTool /> }
+                projects: { title: "Project Tracker", component: <ProjectTrackerTool /> },
+                wordcounter: { title: "Word Counter", component: <WordCounterTool /> },
+                pomodoro: { title: "Pomodoro Timer", component: <PomodoroTool /> },
+                proposal: { title: "Cover Letter Generator", component: <ProposalTool /> }
             };
 
             return (
@@ -784,6 +941,52 @@ In Revision
                             <h4 className="text-lg font-semibold text-white mb-2">Project Tracker</h4>
                             <p className="text-slate-400 text-sm">Organize your work with a simple to-do list. Track active projects and deadlines.</p>
                         </div>
+
+                        {/* Word Counter Card */}
+                        <div 
+                            onClick={() => setActiveTool('wordcounter')}
+                            className="group relative bg-slate-800 p-6 rounded-xl border border-slate-700 hover:border-fuchsia-500 transition-all duration-300 hover:shadow-xl hover:shadow-fuchsia-900/10 cursor-pointer"
+                        >
+                            <div className="absolute top-0 right-0 p-4 opacity-50 group-hover:opacity-100 transition-opacity">
+                                <svg className="w-5 h-5 text-slate-500 group-hover:text-fuchsia-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+                            </div>
+                            <div className="w-12 h-12 rounded-lg bg-fuchsia-900/30 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+                                <DocumentTextIcon className="w-6 h-6 text-fuchsia-400" />
+                            </div>
+                            <h4 className="text-lg font-semibold text-white mb-2">Word Counter</h4>
+                            <p className="text-slate-400 text-sm">Count words, characters, and estimate reading time for your gig descriptions or deliverables.</p>
+                        </div>
+
+                         {/* Pomodoro Card */}
+                         <div 
+                            onClick={() => setActiveTool('pomodoro')}
+                            className="group relative bg-slate-800 p-6 rounded-xl border border-slate-700 hover:border-amber-500 transition-all duration-300 hover:shadow-xl hover:shadow-amber-900/10 cursor-pointer"
+                        >
+                            <div className="absolute top-0 right-0 p-4 opacity-50 group-hover:opacity-100 transition-opacity">
+                                <svg className="w-5 h-5 text-slate-500 group-hover:text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+                            </div>
+                            <div className="w-12 h-12 rounded-lg bg-amber-900/30 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+                                <ClockIcon className="w-6 h-6 text-amber-400" />
+                            </div>
+                            <h4 className="text-lg font-semibold text-white mb-2">Pomodoro Timer</h4>
+                            <p className="text-slate-400 text-sm">Boost productivity with a focused work timer. Default intervals of 25 minutes work, 5 minutes break.</p>
+                        </div>
+
+                        {/* Proposal Generator Card */}
+                         <div 
+                            onClick={() => setActiveTool('proposal')}
+                            className="group relative bg-slate-800 p-6 rounded-xl border border-slate-700 hover:border-teal-500 transition-all duration-300 hover:shadow-xl hover:shadow-teal-900/10 cursor-pointer"
+                        >
+                            <div className="absolute top-0 right-0 p-4 opacity-50 group-hover:opacity-100 transition-opacity">
+                                <svg className="w-5 h-5 text-slate-500 group-hover:text-teal-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+                            </div>
+                            <div className="w-12 h-12 rounded-lg bg-teal-900/30 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+                                <PaperAirplaneIcon className="w-6 h-6 text-teal-400" />
+                            </div>
+                            <h4 className="text-lg font-semibold text-white mb-2">Proposal Maker</h4>
+                            <p className="text-slate-400 text-sm">Quickly generate a professional cover letter template for your buyer requests.</p>
+                        </div>
+
                     </div>
 
                     <Modal 
@@ -822,7 +1025,10 @@ In Revision
                                     <div className="w-10 h-10 rounded-full bg-indigo-900/50 flex items-center justify-center text-indigo-400">
                                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" /></svg>
                                     </div>
-                                    <span>support@sitefixstudio.com</span>
+                                    <div className="flex flex-col">
+                                        <span>support@sitefixstudio.com</span>
+                                        <span className="text-sm text-slate-400">sitefixs@gmail.com</span>
+                                    </div>
                                 </div>
                                 <div className="flex items-center gap-4 text-slate-300">
                                      <div className="w-10 h-10 rounded-full bg-cyan-900/50 flex items-center justify-center text-cyan-400">
@@ -911,18 +1117,18 @@ In Revision
                                 
                                 {/* Desktop Menu */}
                                 <div className="hidden md:flex items-center space-x-8">
+                                    <a 
+                                        href="https://sitefixstudio.com" 
+                                        className="text-sm font-medium text-slate-400 hover:text-white transition-colors"
+                                    >
+                                        Home
+                                    </a>
                                     <button 
                                         onClick={() => setCurrentView('home')}
                                         className={`text-sm font-medium transition-colors ${currentView === 'home' ? 'text-white' : 'text-slate-400 hover:text-white'}`}
                                     >
-                                        Home
+                                        Report Tool
                                     </button>
-                                    <a 
-                                        href="/" 
-                                        className="text-sm font-medium text-slate-400 hover:text-white transition-colors"
-                                    >
-                                        Main Site
-                                    </a>
                                     <button 
                                         onClick={() => setCurrentView('contact')}
                                         className={`text-sm font-medium transition-colors ${currentView === 'contact' ? 'text-white' : 'text-slate-400 hover:text-white'}`}
@@ -933,8 +1139,8 @@ In Revision
 
                                 {/* Mobile Menu Links */}
                                  <div className="md:hidden flex items-center gap-4">
+                                     <a href="https://sitefixstudio.com" className="text-sm font-medium text-slate-400 hover:text-white">Home</a>
                                     <button onClick={() => setCurrentView('contact')} className="text-sm font-medium text-slate-400 hover:text-white">Contact</button>
-                                     <a href="/" className="text-sm font-medium text-slate-400 hover:text-white">Main Site</a>
                                  </div>
                             </div>
                         </div>
