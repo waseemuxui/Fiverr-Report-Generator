@@ -27,6 +27,7 @@
         padding: 0.25rem 0.5rem;
         color: #cbd5e1; /* slate-300 */
         transition: border-color 0.2s, box-shadow 0.2s;
+        width: 100%;
       }
       .themed-input:focus {
         outline: none;
@@ -46,10 +47,6 @@
       .themed-input {
         -moz-appearance: textfield;
       }
-      .cost-input {
-        width: 100px;
-        text-align: right;
-      }
       @keyframes fadeIn {
         from { opacity: 0; transform: translateY(-10px); }
         to { opacity: 1; transform: translateY(0); }
@@ -57,12 +54,27 @@
       .animate-fadeIn {
         animation: fadeIn 0.3s ease-out forwards;
       }
+      /* Custom scrollbar for table */
+      .custom-scrollbar::-webkit-scrollbar {
+        height: 8px;
+        width: 8px;
+      }
+      .custom-scrollbar::-webkit-scrollbar-track {
+        background: #1e293b;
+      }
+      .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: #475569;
+        border-radius: 4px;
+      }
+      .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: #64748b;
+      }
     </style>
 </head>
 <body class="bg-slate-900 text-slate-200">
     <div id="root"></div>
     <script type="text/babel" data-type="module">
-        import React, { useState, useMemo } from 'react';
+        import React, { useState, useMemo, useEffect } from 'react';
         import ReactDOM from 'react-dom/client';
         import { GoogleGenAI, Type } from "@google/genai";
         // FIXED: Use named import for jspdf from esm.sh
@@ -95,7 +107,43 @@
             <path fillRule="evenodd" d="M9.401 3.003c1.155-2 4.043-2 5.197 0l7.355 12.748c1.154 2-.29 4.5-2.599 4.5H4.645c-2.309 0-3.752-2.5-2.598-4.5L9.4 3.003ZM12 8.25a.75.75 0 0 1 .75.75v3.75a.75.75 0 0 1-1.5 0V9a.75.75 0 0 1 .75-.75Zm0 8.25a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Z" clipRule="evenodd" />
           </svg>
         );
-        
+
+        const CalculatorIcon = ({ className }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 15.75V18m-7.5-6.75h.008v.008H8.25v-.008Zm0 2.25h.008v.008H8.25v-.008Zm0 2.25h.008v.008H8.25v-.008Zm0 2.25h.008v.008H8.25v-.008Zm2.25-4.5h.008v.008H10.5v-.008Zm0 2.25h.008v.008H10.5v-.008Zm0 2.25h.008v.008H10.5v-.008Zm2.25-4.5h.008v.008H12.75v-.008Zm0 2.25h.008v.008H12.75v-.008Zm0 2.25h.008v.008H12.75v-.008Zm2.25-4.5h.008v.008H15v-.008Zm0 2.25h.008v.008H15v-.008Zm0 2.25h.008v.008H15v-.008ZM7.5 10.5h3v3h-3v-3Zm3-3h3v3h-3v-3Zm-3 0h3v3h-3v-3Zm9-3h-9a2.25 2.25 0 0 0-2.25 2.25v12a2.25 2.25 0 0 0 2.25 2.25h9a2.25 2.25 0 0 0 2.25-2.25v-12a2.25 2.25 0 0 0-2.25-2.25Z" />
+            </svg>
+        );
+
+        const UserGroupIcon = ({ className }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z" />
+            </svg>
+        );
+
+        const BriefcaseIcon = ({ className }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 14.15v4.25c0 1.094-.787 2.036-1.872 2.18-2.087.277-4.216.42-6.378.42s-4.291-.143-6.378-.42c-1.085-.144-1.872-1.086-1.872-2.18v-4.25m16.5 0a2.18 2.18 0 0 0 .75-1.661V8.706c0-1.081-.768-2.015-1.837-2.175a48.114 48.114 0 0 0-3.413-.387m4.5 8.006c-.194.165-.42.295-.67.38m-2.72-11.528c-.08-.016-.16-.024-.24-.025h-9.84c-.08 0-.16.009-.24.025m2.72 11.528a9.427 9.427 0 0 1-2.72.632m-4.5-8.006a2.18 2.18 0 0 1-.75-1.661V8.706c0-1.081.768-2.015 1.837-2.175a48.111 48.111 0 0 1 3.413-.387m7.5 0V5.25A2.25 2.25 0 0 0 13.5 3h-3a2.25 2.25 0 0 0-2.25 2.25v.894m7.5 0a48.667 48.667 0 0 0-7.5 0M12 12.75h.008v.008H12v-.008Z" />
+            </svg>
+        );
+
+        const PlusIcon = ({ className }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className={className}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+        );
+
+        const TrashIcon = ({ className }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+            </svg>
+        );
+
+        const CheckIcon = ({ className }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className={className}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+            </svg>
+        );
+
         // --- GEMINI SERVICE & ERROR HANDLING ---
         const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
@@ -213,13 +261,216 @@
               throw new Error("INVALID_SCHEMA_FORMAT: Response was not a JSON array.");
             }
             // Add unique ID and cost property
-            return parsedData.map((order, i) => ({ ...order, id: i, cost: undefined }));
+            return parsedData.map((order, i) => ({ 
+                ...order, 
+                id: i, 
+                sheetName: '', // New Field
+                expense: 0     // New Field
+            }));
           } catch (error) {
             console.error("Error details:", error);
             // Re-throw to be caught by the App component
             throw error;
           }
         };
+
+        // --- SUB-COMPONENTS & TOOLS ---
+        const Modal = ({ isOpen, onClose, title, children }) => {
+            if (!isOpen) return null;
+            return (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm animate-fadeIn">
+                <div className="bg-slate-800 rounded-xl border border-slate-700 shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
+                    <div className="flex justify-between items-center p-4 border-b border-slate-700 bg-slate-800/80">
+                        <h3 className="text-xl font-bold text-white flex items-center gap-2">{title}</h3>
+                        <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors p-1 rounded hover:bg-slate-700">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div className="p-6 overflow-y-auto custom-scrollbar">
+                        {children}
+                    </div>
+                </div>
+                </div>
+            );
+        };
+
+        const FeeCalculatorTool = () => {
+            const [amount, setAmount] = useState(100);
+            const [serviceFee, setServiceFee] = useState(20);
+            const [processingFee, setProcessingFee] = useState(1); // e.g. 1% for transfer
+
+            const serviceFeeAmount = (amount * serviceFee) / 100;
+            const afterServiceFee = amount - serviceFeeAmount;
+            const processingFeeAmount = (afterServiceFee * processingFee) / 100;
+            const netProfit = afterServiceFee - processingFeeAmount;
+
+            return (
+                <div className="space-y-6">
+                    {/* Inputs */}
+                    <div className="grid grid-cols-1 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-slate-400 mb-1">Order Value ($)</label>
+                            <div className="relative">
+                                <span className="absolute left-3 top-2.5 text-slate-500">$</span>
+                                <input type="number" value={amount} onChange={e => setAmount(Number(e.target.value))} className="themed-input pl-6 text-white" />
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-400 mb-1">Fiverr Fee (%)</label>
+                                <input type="number" value={serviceFee} onChange={e => setServiceFee(Number(e.target.value))} className="themed-input" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-400 mb-1">Payment Fee (%)</label>
+                                <input type="number" value={processingFee} onChange={e => setProcessingFee(Number(e.target.value))} className="themed-input" />
+                            </div>
+                        </div>
+                    </div>
+                    {/* Results */}
+                    <div className="bg-slate-900/50 p-5 rounded-lg border border-slate-700 space-y-3">
+                        <div className="flex justify-between text-sm text-slate-400">
+                            <span>Service Fee Deduction:</span>
+                            <span className="text-red-400 font-mono">-${serviceFeeAmount.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between text-sm text-slate-400">
+                            <span>Payment Fee Deduction:</span>
+                            <span className="text-red-400 font-mono">-${processingFeeAmount.toFixed(2)}</span>
+                        </div>
+                        <div className="pt-3 border-t border-slate-700 flex justify-between items-center">
+                            <span className="text-slate-200 font-medium">Net Profit:</span>
+                            <span className="text-3xl font-bold text-emerald-400">${netProfit.toFixed(2)}</span>
+                        </div>
+                        <div className="text-xs text-center text-slate-500 pt-2">
+                             You keep <strong>{((netProfit / amount) * 100).toFixed(1)}%</strong> of your earnings.
+                        </div>
+                    </div>
+                </div>
+            )
+        };
+
+        const ClientManagerTool = () => {
+            // Using dummy initial state for demonstration
+            const [clients, setClients] = useState([
+                { id: 1, name: "dons_downfall", note: "Regular buyer, likes fast delivery." },
+                { id: 2, name: "creative_minds", note: "Requests revisions often. Charge extra." }
+            ]);
+            const [name, setName] = useState("");
+            const [note, setNote] = useState("");
+
+            const addClient = () => {
+                if(!name.trim()) return;
+                setClients([{ id: Date.now(), name, note }, ...clients]);
+                setName("");
+                setNote("");
+            };
+
+            const deleteClient = (id) => {
+                setClients(clients.filter(c => c.id !== id));
+            };
+
+            return (
+                <div className="space-y-4">
+                    <div className="bg-slate-700/20 p-4 rounded-lg border border-slate-700/50 space-y-3">
+                        <input 
+                            placeholder="Client Username" 
+                            value={name} 
+                            onChange={e => setName(e.target.value)} 
+                            className="themed-input" 
+                        />
+                        <textarea 
+                            placeholder="Notes (preferences, rating, etc.)" 
+                            value={note} 
+                            onChange={e => setNote(e.target.value)} 
+                            className="themed-input w-full h-20 text-sm resize-none" 
+                        />
+                        <button onClick={addClient} className="w-full py-2 bg-indigo-600 rounded-md text-white hover:bg-indigo-700 font-medium text-sm transition-colors flex items-center justify-center gap-2">
+                            <PlusIcon className="w-4 h-4" /> Add Client
+                        </button>
+                    </div>
+                    
+                    <div className="space-y-2 max-h-60 overflow-y-auto pr-1 custom-scrollbar">
+                        {clients.length === 0 && <p className="text-center text-slate-500 text-sm py-4 italic">No clients added yet.</p>}
+                        {clients.map(client => (
+                            <div key={client.id} className="bg-slate-700/30 p-3 rounded-lg flex justify-between items-start group hover:bg-slate-700/50 transition-colors">
+                                <div className="flex-1 mr-2">
+                                    <div className="font-semibold text-white text-sm">{client.name}</div>
+                                    <div className="text-xs text-slate-400 mt-1 leading-relaxed">{client.note || "No notes."}</div>
+                                </div>
+                                <button onClick={() => deleteClient(client.id)} className="text-slate-500 hover:text-red-400 p-1">
+                                    <TrashIcon className="w-4 h-4" />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        };
+
+        const ProjectTrackerTool = () => {
+            const [projects, setProjects] = useState([
+                { id: 1, name: "Website Redesign for Mark", status: "pending" },
+                { id: 2, name: "Logo Pack (3 Variations)", status: "done" }
+            ]);
+            const [newProject, setNewProject] = useState("");
+
+            const addProject = (e) => {
+                e.preventDefault();
+                if (!newProject.trim()) return;
+                setProjects([{ id: Date.now(), name: newProject, status: "pending" }, ...projects]);
+                setNewProject("");
+            };
+
+            const toggleStatus = (id) => {
+                setProjects(projects.map(p => 
+                    p.id === id ? { ...p, status: p.status === "done" ? "pending" : "done" } : p
+                ));
+            };
+
+            const deleteProject = (id) => {
+                setProjects(projects.filter(p => p.id !== id));
+            };
+
+            return (
+                <div className="space-y-4">
+                     <form onSubmit={addProject} className="flex gap-2">
+                        <input 
+                            placeholder="New Project / Task..." 
+                            value={newProject} 
+                            onChange={e => setNewProject(e.target.value)} 
+                            className="themed-input flex-1" 
+                        />
+                        <button type="submit" className="px-4 py-2 bg-emerald-600 rounded-md text-white hover:bg-emerald-700">
+                             <PlusIcon className="w-5 h-5" />
+                        </button>
+                    </form>
+
+                    <div className="space-y-2 max-h-60 overflow-y-auto pr-1 custom-scrollbar">
+                        {projects.length === 0 && <p className="text-center text-slate-500 text-sm py-4 italic">No active projects.</p>}
+                        {projects.map(project => (
+                            <div key={project.id} className={`p-3 rounded-lg flex items-center justify-between border transition-all duration-200 ${project.status === 'done' ? 'bg-slate-800/50 border-slate-700/50 opacity-70' : 'bg-slate-700/30 border-slate-600'}`}>
+                                <div className="flex items-center gap-3 flex-1 overflow-hidden">
+                                    <button 
+                                        onClick={() => toggleStatus(project.id)}
+                                        className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${project.status === 'done' ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-500 hover:border-emerald-400'}`}
+                                    >
+                                        {project.status === 'done' && <CheckIcon className="w-3.5 h-3.5" />}
+                                    </button>
+                                    <span className={`text-sm truncate ${project.status === 'done' ? 'line-through text-slate-500' : 'text-slate-200'}`}>
+                                        {project.name}
+                                    </span>
+                                </div>
+                                <button onClick={() => deleteProject(project.id)} className="text-slate-500 hover:text-red-400 ml-2">
+                                     <TrashIcon className="w-4 h-4" />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        };
+
 
         // --- COMPONENTS ---
         const OrderInput = ({ onGenerate, isLoading, onClear }) => {
@@ -332,7 +583,7 @@ In Revision
             );
         };
 
-        const ReportTable = ({ data, onUpdatePkr }) => {
+        const ReportTable = ({ data, onUpdateField }) => {
             const totalValue = useMemo(() => {
                 return data.reduce((sum, item) => sum + (Number(item.value) || 0), 0);
             }, [data]);
@@ -341,38 +592,50 @@ In Revision
                 return data.reduce((sum, item) => sum + (Number(item.valuePKR) || 0), 0);
             }, [data]);
 
+            const totalExpense = useMemo(() => {
+                return data.reduce((sum, item) => sum + (Number(item.expense) || 0), 0);
+            }, [data]);
+
             const downloadPDF = () => {
                 const doc = new jsPDF();
                 
-                doc.setFontSize(18);
+                // Add SiteFixStudio.com header
+                doc.setFontSize(22);
+                doc.setTextColor(79, 70, 229); // Indigo
+                doc.text("SiteFixStudio.com", 14, 20);
+
+                doc.setFontSize(14);
                 doc.setTextColor(40);
-                doc.text("Fiverr Order Report", 14, 22);
+                doc.text("Fiverr Order Report", 14, 32);
                 
-                doc.setFontSize(11);
+                doc.setFontSize(10);
                 doc.setTextColor(100);
-                doc.text(`Generated on ${new Date().toLocaleDateString()}`, 14, 30);
+                doc.text(`Generated on ${new Date().toLocaleDateString()}`, 14, 38);
                 
                 const tableBody = data.map(row => [
                     row.date,
                     row.clientName,
+                    row.sheetName || '-',
                     row.description,
                     row.status,
                     `$${Number(row.value).toFixed(2)}`,
+                    row.expense ? `$${Number(row.expense).toFixed(2)}` : '-',
                     `Rs ${Number(row.valuePKR).toLocaleString()}`
                 ]);
 
                 autoTable(doc, {
-                    startY: 40,
-                    head: [['Date', 'Client', 'Description', 'Status', 'Value ($)', 'Value (PKR)']],
+                    startY: 45,
+                    head: [['Date', 'Client', 'Sheet', 'Description', 'Status', 'Value ($)', 'Exp ($)', 'Value (PKR)']],
                     body: tableBody,
-                    foot: [['', '', '', 'Total', `$${totalValue.toFixed(2)}`, `Rs ${totalValuePKR.toLocaleString()}`]],
+                    foot: [['', '', '', '', 'Total', `$${totalValue.toFixed(2)}`, `$${totalExpense.toFixed(2)}`, `Rs ${totalValuePKR.toLocaleString()}`]],
                     theme: 'grid',
                     headStyles: { fillColor: [79, 70, 229] }, // Indigo 600
                     footStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42] }, // Slate 100
-                    styles: { fontSize: 10, cellPadding: 3 },
+                    styles: { fontSize: 8, cellPadding: 2 },
                     columnStyles: {
-                        4: { halign: 'right' }, // Value $
-                        5: { halign: 'right', fontStyle: 'bold' } // Value PKR
+                        5: { halign: 'right' }, // Value $
+                        6: { halign: 'right' }, // Exp
+                        7: { halign: 'right', fontStyle: 'bold' } // Value PKR
                     }
                 });
 
@@ -392,15 +655,17 @@ In Revision
                     </div>
                     
                     <div className="bg-slate-800 rounded-lg shadow-lg overflow-hidden border border-slate-700">
-                        <div className="overflow-x-auto">
+                        <div className="overflow-x-auto custom-scrollbar">
                             <table className="min-w-full divide-y divide-slate-700">
                                 <thead className="bg-slate-700/50">
                                     <tr>
                                         <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-300 uppercase tracking-wider">Date</th>
                                         <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-300 uppercase tracking-wider">Client</th>
+                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-300 uppercase tracking-wider">Sheet Name</th>
                                         <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-300 uppercase tracking-wider">Description</th>
                                         <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-300 uppercase tracking-wider">Status</th>
                                         <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-slate-300 uppercase tracking-wider">Value ($)</th>
+                                        <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-slate-300 uppercase tracking-wider">Exp ($)</th>
                                         <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-slate-300 uppercase tracking-wider">Value (PKR)</th>
                                     </tr>
                                 </thead>
@@ -409,6 +674,15 @@ In Revision
                                         <tr key={idx} className="hover:bg-slate-700/30 transition-colors duration-150">
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300 font-mono">{order.date}</td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">{order.clientName}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300">
+                                                 <input 
+                                                    type="text" 
+                                                    className="themed-input text-xs"
+                                                    placeholder="Project Sheet"
+                                                    value={order.sheetName}
+                                                    onChange={(e) => onUpdateField(idx, 'sheetName', e.target.value)}
+                                                />
+                                            </td>
                                             <td className="px-6 py-4 text-sm text-slate-400 max-w-xs truncate" title={order.description}>{order.description}</td>
                                             <td className="px-6 py-4 whitespace-nowrap">
                                                 <StatusBadge status={order.status} />
@@ -419,9 +693,17 @@ In Revision
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-mono">
                                                 <input 
                                                     type="number" 
+                                                    className="themed-input w-20 text-right text-sm"
+                                                    value={order.expense}
+                                                    onChange={(e) => onUpdateField(idx, 'expense', e.target.value)}
+                                                />
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-mono">
+                                                <input 
+                                                    type="number" 
                                                     className="themed-input w-24 text-right text-sm"
                                                     value={order.valuePKR}
-                                                    onChange={(e) => onUpdatePkr(idx, e.target.value)}
+                                                    onChange={(e) => onUpdateField(idx, 'valuePKR', e.target.value)}
                                                 />
                                             </td>
                                         </tr>
@@ -429,14 +711,88 @@ In Revision
                                 </tbody>
                                 <tfoot className="bg-slate-700/30 font-semibold border-t border-slate-700">
                                     <tr>
-                                        <td colSpan={4} className="px-6 py-4 text-sm text-slate-300 text-right uppercase tracking-wider">Total Revenue</td>
+                                        <td colSpan={5} className="px-6 py-4 text-sm text-slate-300 text-right uppercase tracking-wider">Totals</td>
                                         <td className="px-6 py-4 text-sm text-right text-emerald-400 font-mono text-base shadow-inner bg-slate-700/20">${totalValue.toFixed(2)}</td>
+                                        <td className="px-6 py-4 text-sm text-right text-rose-400 font-mono text-base shadow-inner bg-slate-700/20">${totalExpense.toFixed(2)}</td>
                                         <td className="px-6 py-4 text-sm text-right text-emerald-400 font-mono text-base shadow-inner bg-slate-700/20">Rs {totalValuePKR.toLocaleString()}</td>
                                     </tr>
                                 </tfoot>
                             </table>
                         </div>
                     </div>
+                </div>
+            );
+        };
+
+        const FreelancerTools = () => {
+            const [activeTool, setActiveTool] = useState(null);
+
+            const tools = {
+                calculator: { title: "Fee Calculator", component: <FeeCalculatorTool /> },
+                clients: { title: "Client Manager", component: <ClientManagerTool /> },
+                projects: { title: "Project Tracker", component: <ProjectTrackerTool /> }
+            };
+
+            return (
+                <div className="mt-16 pt-10 border-t border-slate-800 animate-fadeIn">
+                     <div className="flex items-center gap-3 mb-6">
+                        <h3 className="text-2xl font-bold text-white">Freelancer Toolkit</h3>
+                        <span className="bg-indigo-500/20 text-indigo-300 text-xs font-medium px-2.5 py-0.5 rounded border border-indigo-500/30">Interactive Tools</span>
+                     </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {/* Fee Calculator Card */}
+                        <div 
+                            onClick={() => setActiveTool('calculator')}
+                            className="group relative bg-slate-800 p-6 rounded-xl border border-slate-700 hover:border-indigo-500 transition-all duration-300 hover:shadow-xl hover:shadow-indigo-900/10 cursor-pointer"
+                        >
+                            <div className="absolute top-0 right-0 p-4 opacity-50 group-hover:opacity-100 transition-opacity">
+                                <svg className="w-5 h-5 text-slate-500 group-hover:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+                            </div>
+                            <div className="w-12 h-12 rounded-lg bg-indigo-900/30 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+                                <CalculatorIcon className="w-6 h-6 text-indigo-400" />
+                            </div>
+                            <h4 className="text-lg font-semibold text-white mb-2">Fee Calculator</h4>
+                            <p className="text-slate-400 text-sm">Instantly calculate Fiverr service fees, payment processing charges, and your final net profit.</p>
+                        </div>
+
+                        {/* Client Manager Card */}
+                        <div 
+                            onClick={() => setActiveTool('clients')}
+                            className="group relative bg-slate-800 p-6 rounded-xl border border-slate-700 hover:border-cyan-500 transition-all duration-300 hover:shadow-xl hover:shadow-cyan-900/10 cursor-pointer"
+                        >
+                            <div className="absolute top-0 right-0 p-4 opacity-50 group-hover:opacity-100 transition-opacity">
+                                <svg className="w-5 h-5 text-slate-500 group-hover:text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+                            </div>
+                            <div className="w-12 h-12 rounded-lg bg-cyan-900/30 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+                                <UserGroupIcon className="w-6 h-6 text-cyan-400" />
+                            </div>
+                            <h4 className="text-lg font-semibold text-white mb-2">Client Manager</h4>
+                            <p className="text-slate-400 text-sm">Keep track of regular buyers, add notes about preferences, and manage your client list.</p>
+                        </div>
+
+                        {/* Project Tracker Card */}
+                        <div 
+                            onClick={() => setActiveTool('projects')}
+                            className="group relative bg-slate-800 p-6 rounded-xl border border-slate-700 hover:border-emerald-500 transition-all duration-300 hover:shadow-xl hover:shadow-emerald-900/10 cursor-pointer"
+                        >
+                            <div className="absolute top-0 right-0 p-4 opacity-50 group-hover:opacity-100 transition-opacity">
+                                <svg className="w-5 h-5 text-slate-500 group-hover:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+                            </div>
+                            <div className="w-12 h-12 rounded-lg bg-emerald-900/30 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+                                <BriefcaseIcon className="w-6 h-6 text-emerald-400" />
+                            </div>
+                            <h4 className="text-lg font-semibold text-white mb-2">Project Tracker</h4>
+                            <p className="text-slate-400 text-sm">Organize your work with a simple to-do list. Track active projects and deadlines.</p>
+                        </div>
+                    </div>
+
+                    <Modal 
+                        isOpen={!!activeTool} 
+                        onClose={() => setActiveTool(null)}
+                        title={activeTool ? tools[activeTool].title : ''}
+                    >
+                        {activeTool && tools[activeTool].component}
+                    </Modal>
                 </div>
             );
         };
@@ -465,10 +821,10 @@ In Revision
                 }
             };
 
-            const handleUpdatePkr = (index, newValue) => {
+            const handleUpdateField = (index, field, newValue) => {
                 setOrderData(prevData => {
                     const newData = [...prevData];
-                    newData[index] = { ...newData[index], valuePKR: newValue };
+                    newData[index] = { ...newData[index], [field]: newValue };
                     return newData;
                 });
             };
@@ -479,32 +835,52 @@ In Revision
             };
 
             return (
-                <div className="min-h-screen bg-slate-900 text-slate-200 py-12 px-4 sm:px-6 lg:px-8 font-sans">
-                    <div className="max-w-5xl mx-auto space-y-8">
-                        <header className="text-center space-y-3">
-                            <h1 className="text-4xl font-extrabold tracking-tight text-white sm:text-5xl">
-                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-400">Fiverr</span> Order Report
-                            </h1>
-                            <p className="text-lg text-slate-400 max-w-2xl mx-auto">
-                                Paste your raw order history and let AI transform it into a clean, professional report ready for export.
-                            </p>
-                        </header>
-
-                        <main className="space-y-6">
-                            <OrderInput onGenerate={handleGenerate} isLoading={isLoading} onClear={handleClear} />
-                            
-                            <ErrorCard error={error} onClear={() => setError(null)} />
-
-                            {orderData && (
-                                <div className="mt-8">
-                                    <ReportTable data={orderData} onUpdatePkr={handleUpdatePkr} />
+                <div className="min-h-screen bg-slate-900 text-slate-200 font-sans">
+                    {/* Header Bar */}
+                    <nav className="bg-slate-800/50 backdrop-blur-md border-b border-slate-700 sticky top-0 z-50">
+                        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                            <div className="flex h-16 items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-indigo-500 to-cyan-500 flex items-center justify-center text-white font-bold text-sm">
+                                        SF
+                                    </div>
+                                    <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-cyan-400">
+                                        SiteFixStudio.com
+                                    </span>
                                 </div>
-                            )}
-                        </main>
-                        
-                        <footer className="text-center text-slate-600 text-sm mt-12 pt-8 border-t border-slate-800">
-                            <p>Powered by Google Gemini 2.5 Flash</p>
-                        </footer>
+                            </div>
+                        </div>
+                    </nav>
+
+                    <div className="py-12 px-4 sm:px-6 lg:px-8">
+                        <div className="max-w-5xl mx-auto space-y-8">
+                            <header className="text-center space-y-3">
+                                <h1 className="text-4xl font-extrabold tracking-tight text-white sm:text-5xl">
+                                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-400">Fiverr</span> Order Report
+                                </h1>
+                                <p className="text-lg text-slate-400 max-w-2xl mx-auto">
+                                    Paste your raw order history and let AI transform it into a clean, professional report ready for export.
+                                </p>
+                            </header>
+
+                            <main className="space-y-6">
+                                <OrderInput onGenerate={handleGenerate} isLoading={isLoading} onClear={handleClear} />
+                                
+                                <ErrorCard error={error} onClear={() => setError(null)} />
+
+                                {orderData && (
+                                    <div className="mt-8">
+                                        <ReportTable data={orderData} onUpdateField={handleUpdateField} />
+                                    </div>
+                                )}
+                                
+                                <FreelancerTools />
+                            </main>
+                            
+                            <footer className="text-center text-slate-600 text-sm mt-12 pt-8 border-t border-slate-800">
+                                <p>Powered by Google Gemini 2.5 Flash</p>
+                            </footer>
+                        </div>
                     </div>
                 </div>
             );
